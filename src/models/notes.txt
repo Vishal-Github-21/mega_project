@@ -1,0 +1,14 @@
+npm i aggregate-paginate-v2 
+used for using real power of mongoose using aggregate pipline to writing quries and all
+
+
+npm i bcrypt
+used for   hashing of password
+
+npm i jsonwebtoken
+go to jwt.io for seeing token
+
+access token not stored in db
+wherease refersh token is stored
+
+videos are yet to come for jwt access and refresh token

@@ -7,6 +7,14 @@ dotenv.config({
 })
 
 connectionDb()
+.then(()=>{
+  app.listen(process.env.PORT || 8000,()=>{
+    console.log(`server is running at port : ${process.env.PORT}`);
+  })
+})
+.catch((err)=>{
+  console.log("Mongodb connection failed !!! ",err);//as connection returns promise we are catching error
+})
 
 //other approach is to write a connection code in db folder and export it ..
 
@@ -31,14 +39,15 @@ connectionDb()
 
 
 
-
 /*
+import mongoose from "mongoose";
+import {DB_NAME} from "./constants.js"
 import  express  from "express";
 const app=express();
 //using iffis to connect
 (async()=>{
   try {
-    await mongoose.connect(`${process.env.MONODB_URI}/${DB_NAME}`)
+    await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`)
     console.log("connection sucessfull")
     
 
