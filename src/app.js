@@ -24,4 +24,31 @@ app.use(cookieParser())
 
 
 
-export default express;
+
+//routes import
+
+import userRouter from "./routes/users.routes.js";
+
+
+
+//routes declaration
+
+
+//this is how we used to write before setting up routes 
+//now as we creataed diffrent routes file so we need to use middleware
+
+// Responds to GET requests at the root URL '/'
+app.get('/', (req, res) => {
+    res.send('Hello, this is the homepage!');
+  });
+  
+
+
+//this is the way
+// app.use("/users",userRouter)//this is how but we need to define api for proper practise here below
+app.use("/api/v1/users",userRouter)
+
+// http://localhost:8000/api/v1/users
+
+
+export {app};
