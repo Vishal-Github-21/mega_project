@@ -50,7 +50,7 @@ const userSchema=new Schema({
 //encrypting before saving the password
 userSchema.pre("save",async function(next){
          if(!this.isModified("password")) return next();//checking if password is not modified then send it to next if modified then hash password
-         this.password=bcrypt.hash(this.password,10)//how many rounds of hashing in this case 10
+         this.password = await bcrypt.hash(this.password,10)//how many rounds of hashing in this case 10 and await also because hashing takes time
          next()
 })
 
