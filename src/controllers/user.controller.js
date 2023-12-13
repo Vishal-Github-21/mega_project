@@ -10,9 +10,9 @@ import {ApiResponse} from "../utils/apiResponses.js"
 const registerUser = asyncHandler(async (req, res) => {
   // res.status(200).json({
   //       message:"ok"
-  //   })
+ 
 
-
+  
   //get user deatails from frontend✅
   //validation - not empty and many more✅
   //check if user already exists: username,email ✅
@@ -23,8 +23,13 @@ const registerUser = asyncHandler(async (req, res) => {
   // check for user creation✅
   //return res✅
 
+
+
+    //get user deatails from frontend
+
+    
   const { fullName, email, username, password } = req.body
-  console.log("email", email);
+  // console.log("email", email);
 
   //beginer code
   //  if(fullName==""){
@@ -32,7 +37,7 @@ const registerUser = asyncHandler(async (req, res) => {
   //  }
 
 
-  // checks if user has entered empty string
+  //validation - not empty and many more
   if (
     [fullName, email, username, password].some((field) =>
       field?.trim() === "")
@@ -41,7 +46,7 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //validation
-  const existedUser = User.findOne({
+  const existedUser = await User.findOne({
 
     $or: [{ username }, { email }]
 
@@ -51,9 +56,21 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(409, "User with email or username already exists ")
   }
 
+  console.log(req.files);
 
   const avatarlocalPath = req.files?.avatar[0]?.path //getting the path of the avatar uploaded by multer
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  //error we faced so commeting out below line of code and checking in a classic way
+  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+let coverImageLocalPath;
+
+if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0) {
+  coverImageLocalPath=req.files.coverImage[0].path
+} else {
+  
+}
+
 
 
 

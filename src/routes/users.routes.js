@@ -7,6 +7,7 @@ import {upload} from "../middlewares/multer.middleware.js"
 const router=Router()
 
 router.route("/register").post(
+   
     //upload is a middleware we are using
     upload.fields([
         {
@@ -14,7 +15,8 @@ router.route("/register").post(
             maxCount:1
         },
         {
-            name:"coverImage"
+            name:"coverImage",
+            maxCount:1
         }
     ]),
     registerUser
