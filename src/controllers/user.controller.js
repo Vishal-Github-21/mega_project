@@ -3,16 +3,36 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/apierrors.js";
 import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
-import {ApiResponse} from "../utils/apiResponses.js"
+import { ApiResponse } from "../utils/apiResponses.js"
+
+// as we are going to genrate access and refresh token many a times so its better to write seprate method for it
+
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId)
+    const accessToken = user.generateAccessToken()
+    const refreshToken = user.generateRefreshToken()
+
+
+    //saving refreshToken in mongodb
+    user.refreshToken = refreshToken
+    await user.save({ validateBeforeSave: false }) // validateBeforeSave : false cause we dont need to enter password again to save refreshtoken in mongo
+
+  } catch {
+    throw new ApiError(500, "error while generating access and refresh token")
+  }
+
+  return { accessToken, refreshToken }
+}
 
 
 //logic to register user
 const registerUser = asyncHandler(async (req, res) => {
   // res.status(200).json({
   //       message:"ok"
- 
 
-  
+
+
   //get user deatails from frontend✅
   //validation - not empty and many more✅
   //check if user already exists: username,email ✅
@@ -25,9 +45,9 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
 
-    //get user deatails from frontend
+  //get user deatails from frontend
 
-    
+
   const { fullName, email, username, password } = req.body
   // console.log("email", email);
 
@@ -63,13 +83,13 @@ const registerUser = asyncHandler(async (req, res) => {
   //error we faced so commeting out below line of code and checking in a classic way
   // const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
-let coverImageLocalPath;
+  let coverImageLocalPath;
 
-if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length >0) {
-  coverImageLocalPath=req.files.coverImage[0].path
-} else {
-  
-}
+  if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+    coverImageLocalPath = req.files.coverImage[0].path
+  } else {
+
+  }
 
 
 
@@ -113,12 +133,111 @@ if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.len
   }
 
 
-   return res.status(201).json( 
-    new ApiResponse(200,createdUser,"User registred successfully")
-   )
+  return res.status(201).json(
+    new ApiResponse(200, createdUser, "User registred successfully")
+  )
 
 
 })
 
 
-export { registerUser }
+const loginUser = asyncHandler(async (req, res) => {
+  //req body -> data
+  // username or email verification
+  //password check
+  //access and refresh token generation
+  // send cookies to user
+
+
+
+  //req body -> data 
+  const { email, username, password } = req.body
+
+  // username or email verification
+
+  if (username || email) {
+    throw new ApiError(400, "username or email required")
+  }
+
+
+  const user = await User.findById({
+    $or: [{ email }, { username }]
+  })
+
+  if (!user) {
+    throw new ApiError(404, "user does not exist")
+
+  }
+
+
+  //password check
+  const isPasswordValid = await user.isPasswordCorrect(password)
+
+
+  if (!isPasswordValid) {
+    throw new ApiError(401, "invalid password")
+  }
+
+
+  //access and refresh token generation
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+
+  // send cookies to user
+
+
+  //now we dont have access to refreshtoken in line 162 cause that time refreshtoken was empty so we need to call db or we can update current user so we have two option choice is ours
+  const loggedUser = await User.findById(user._id).
+    select("-password -redfreshToken")
+
+
+  // without options cookies can be modified from frontend also so we are using options httponly so only server side it can be modified
+
+  const options = {
+    httpOnly: true,
+    secure: true
+  }
+
+  return res.
+    status(200).
+    cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedUser, accessToken,
+          refreshToken
+        },
+        "user logged in successfully"
+      )
+    )
+})
+
+//main logic is to clear cookies from server and also refreshToken
+const loggOutUser = asyncHandler(async (req, res) => {
+
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        refreshToken: undefined
+      },
+    },
+    {
+      new: true
+    }
+    
+  )
+  const options={
+    httpOnly: true,
+    secure:true
+  }  
+
+  return res
+  .status(200)
+  .clearCookie(accessToken)
+  .clearCookie(refreshToken)
+  .json(new ApiResponse(200),{},"user loggedout successfully")
+
+})
+export { registerUser, loginUser, loggOutUser }
