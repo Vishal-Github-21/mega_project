@@ -1,4 +1,4 @@
-import { ApiError } from "../utils/apierrors";
+import { ApiError } from "../utils/apierrors.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.models.js";
@@ -7,16 +7,20 @@ import { User } from "../models/user.models.js";
 
 export const verifyJWT=asyncHandler(async (req,_,next)=>{ // here res is of no use so we can replace it by "_" just a standard practise
    try {
-     const token=req.cookies?.accessToken || // why not we are using refreshtoken here will see in next video
+      const token=req.cookies?.accessToken || // why not we are using refreshtoken here will see in next video
       ("Authorization")?.replace("Bearer ","")
+     
  
       if(!token){
          throw new ApiError(401,"unauthorized request ")
       }
+     
    
- 
+     
       //verifying token
-      const decodedToken = jwt.verify(token,jwt.ACCESS_TOKEN_SECRET)
+      const decodedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
+      
+
      
       const user = await User.findById(decodedToken?._id).
       select("-password -refreshToken")
