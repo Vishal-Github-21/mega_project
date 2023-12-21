@@ -8,20 +8,23 @@ import { ApiResponse } from "../utils/apiResponses.js"
 // as we are going to genrate access and refresh token many a times so its better to write seprate method for it
 
 const generateAccessAndRefreshToken = async (userId) => {
+  let accessToken
+  let refreshToken
   try {
     const user = await User.findById(userId)
-    const accessToken = user.generateAccessToken()
-    const refreshToken = user.generateRefreshToken()
-
-
+    
+     accessToken = user.generateAccessToken()
+     refreshToken = user.generateRefreshToken()
+    
+    
     //saving refreshToken in mongodb
     user.refreshToken = refreshToken
     await user.save({ validateBeforeSave: false }) // validateBeforeSave : false cause we dont need to enter password again to save refreshtoken in mongo
 
-  } catch {
+  } catch(error) {
+    console.log(error.message)
     throw new ApiError(500, "error while generating access and refresh token")
   }
-
   return { accessToken, refreshToken }
 }
 
@@ -155,13 +158,20 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // username or email verification
 
-  if (username || email) {
+  if (!(username || email)) {
     throw new ApiError(400, "username or email required")
   }
+  //  console.log("well")
 
+  // const user = await User.findById({
+  //   $or: [{username}, {email}]
+  // })
 
-  const user = await User.findById({
-    $or: [{ email }, { username }]
+  const user = await User.findOne({
+    $or: [
+      { username: username }, // Assuming 'username' variable holds the username value
+      { email: email } // Assuming 'email' variable holds the email value
+    ]
   })
 
   if (!user) {
@@ -178,7 +188,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "invalid password")
   }
 
-
+   
   //access and refresh token generation
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
 
@@ -226,18 +236,18 @@ const loggOutUser = asyncHandler(async (req, res) => {
     {
       new: true
     }
-    
+
   )
-  const options={
+  const options = {
     httpOnly: true,
-    secure:true
-  }  
+    secure: true
+  }
 
   return res
-  .status(200)
-  .clearCookie(accessToken)
-  .clearCookie(refreshToken)
-  .json(new ApiResponse(200),{},"user loggedout successfully")
+    .status(200)
+    .clearCookie(accessToken)
+    .clearCookie(refreshToken)
+    .json(new ApiResponse(200), {}, "user loggedout successfully")
 
 })
 export { registerUser, loginUser, loggOutUser }
