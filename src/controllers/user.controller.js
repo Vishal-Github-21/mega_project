@@ -4,6 +4,7 @@ import { ApiError } from "../utils/apierrors.js";
 import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponses.js"
+import jwt from "jsonwebtoken"
 
 // as we are going to genrate access and refresh token many a times so its better to write seprate method for it
 
@@ -247,7 +248,56 @@ const loggOutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken",options)
     .clearCookie("refreshToken",options)
-    .json(new ApiResponse(200), {}, "user loggedout successfully")
+    .json(new ApiResponse(200, {}, "user loggedout successfully"))
 
 })
-export { registerUser, loginUser, loggOutUser }
+
+const refreshAccessToken=asyncHandler(async (req,res)=>{
+  const  incomingRefreshToken=  req.cookie.refreshToken || req.body.refreshToken 
+
+    if(!incomingRefreshToken){
+      throw new ApiError(401,"invalid request , cant find refreshtoken ")
+    }
+   try {
+     
+     const decodedToken= jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+ 
+     const user = await jwt.findById(decodedToken?._id)
+ 
+     if(!user){
+       throw new ApiError(401,"invalid request user not found")
+     }
+    
+     if(incomingRefreshToken !== user?.refreshToken){
+       throw new ApiError(401,"refresh token doesnot matches")
+     }
+     
+    const { accessToken,newRefreshToken}= generateAccessAndRefreshToken(user._id)
+ 
+     const options = {
+       httpOnly :true,
+       secure : true 
+     }
+ 
+     return res.
+     cookie("accessToken",accessToken,options).
+     cookie("refreshToken",newRefreshToken,options).
+     json(
+       ApiResponse(
+         200,
+           {accessToken,refreshToken:newRefreshToken},
+           "access token refreshed"
+       )
+ 
+     )
+   } catch (error) {
+
+    throw new ApiError(401,error?.message||" something went worng in refreshAccessToken controller")
+    
+   }
+    
+
+
+  }
+)
+export { registerUser, loginUser, loggOutUser, refreshAccessToken }

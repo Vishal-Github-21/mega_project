@@ -70,12 +70,14 @@ userSchema.methods.generateAccessToken=function (){
             fullName:this.fullName
         },
         process.env.ACCESS_TOKEN_SECRET,{
-            expiresIn:process.env.ACCESS_TOKEN_EXPIRY
+            // expiresIn: process.env.ACCESS_TOKEN_EXPIRY eror dont no how
+            expiresIn: "1d"
         }
     )
 }
 
 userSchema.methods.generateRefreshToken=function (){
+   
   return jwt.sign(
                   
     {
@@ -84,8 +86,9 @@ userSchema.methods.generateRefreshToken=function (){
         username:this.username,
         fullName:this.fullName
     },
-    process.env.REFRESH_TOKEN_SECRET,{
-        expiresIn:process.env.REFRESH_TOKEN_EXPIRY
+    process.env.REFRESH_TOKEN_SECRET,{ 
+        // expiresIn: process.env.REFRESH_TOKEN_EXPIRY  eror dont no how
+        expiresIn: "10d"
     }
 
   ) 
