@@ -301,34 +301,34 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 }
 )
 
-const changePassword = asyncHandler(async (req,res)=>{
-  const {oldPassword , newPassword} = req.body
+const changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body
 
-  const user= await User.findById(req.user?._id)
+  const user = await User.findById(req.user?._id)
 
   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
-  
-  if(!isPasswordCorrect){
-    throw new ApiError(400,"invalid old password")
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "invalid old password")
   }
-  
-  user.password=newPassword
+
+  user.password = newPassword
   user.save()
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse (
-      200,
-      {},
-      "password updated successfully"
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {},
+        "password updated successfully"
+      )
     )
-  ) 
 
 })
 
-const  getCurrentUser = asyncHandler(async (req,res)=>{
-    return res
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
     .status(200)
     .json(
       new ApiResponse(
@@ -339,57 +339,57 @@ const  getCurrentUser = asyncHandler(async (req,res)=>{
     )
 })
 
-const updateAccountDetails = asyncHandler( async(req,res)=>{
-  const {email,username}=req.body
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { email, username } = req.body
 
-  if( !(email && username) ){
-       throw new ApiError(401 ," email and username both are required")
+  if (!(email && username)) {
+    throw new ApiError(401, " email and username both are required")
   }
 
-  const user= await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      email:email,
-      username:username
+      email: email,
+      username: username
     },
-    {validateBeforeSave : true}
-    ).select(
-      "-password"
-    )
-    
-    return res
+    { validateBeforeSave: true }
+  ).select(
+    "-password"
+  )
+
+  return res
     .status(200)
     .json(
-     new ApiResponse(
-      200,
-      user,
-      "account detail updated successfully"
-     )
+      new ApiResponse(
+        200,
+        user,
+        "account detail updated successfully"
+      )
     )
-  
+
 })
 
-const updateUserAvatar= asyncHandler( async (req,res)=>{
+const updateUserAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req?.file.path
 
-  if(!avatarLocalPath){
-    throw new ApiError(401,"error while uploading avatar")
+  if (!avatarLocalPath) {
+    throw new ApiError(401, "error while uploading avatar")
   }
- 
-  const avatar= await uploadOnCloudinary(avatarLocalPath)
 
-  const user= await User.findByIdAndUpdate(
+  const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set:{
-        avatar : avatar?.url
+      $set: {
+        avatar: avatar?.url
       },
     },
-    {new : true}// returns the user with after updataing on mongodb
-    ).select("-password")
+    { new: true }// returns the user with after updataing on mongodb
+  ).select("-password")
 
 
-    return res
+  return res
     .status(200)
     .json(
       new ApiResponse(
@@ -399,27 +399,28 @@ const updateUserAvatar= asyncHandler( async (req,res)=>{
       )
     )
 })
-const updateUserCoverImage = asyncHandler( async (req,res)=>{
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req?.file.path
 
-  if(!coverImageLocalPath){
-    throw new ApiError(401,"error while uploading avatar")
+  if (!coverImageLocalPath) {
+    throw new ApiError(401, "error while uploading avatar")
   }
- 
-  const coverImage= await uploadOnCloudinary(coverImageLocalPath)
 
-  const user= await User.findByIdAndUpdate(
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
-      $set:{
-        coverImage : coverImage?.url
+      $set: {
+        coverImage: coverImage?.url
       },
     },
-    {new : true}// returns the user with after updataing on mongodb
-    ).select("-password")
+    { new: true }// returns the user with after updataing on mongodb
+  ).select("-password")
 
 
-    return res
+  return res
     .status(200)
     .json(
       new ApiResponse(
@@ -428,6 +429,83 @@ const updateUserCoverImage = asyncHandler( async (req,res)=>{
         "coverImage updated successfully"
       )
     )
+})
+
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+
+  const { username } = req.params
+
+  if (!username) {
+    throw ApiError(400, "username is missing")
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: { // its like where clause mySQL
+        username: username?.toLowerCase()
+      }
+    },
+    { // for counting of total subscibers of a particular username
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers"
+      }
+    },
+    {  // for counting of total channel  a particular username has subscribed
+      $lookup: {
+        from: "subscription",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subsciberTo"
+
+      }
+    }, {
+      $addFields: {
+        subscribersCount: {
+          $size: "$subscribers" // getting count of subscribers
+        },
+        subscribedToCount: {
+          $size: "subsciberTo" // getting how many account i subcribedTo
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req?.params.username, "$subscribers.subsriber"] },
+            then: true,
+            else: false
+          }
+        }
+      }
+    }, {
+      $project: {
+        _id: 1,
+        username: 1,
+        subscribersCount: 1,
+        subscribedToCount: 1,
+        isSubscribed: 1,
+        email: 1,
+        fullName: 1,
+        avatar: 1,
+        coverImage: 1
+
+      }
+    }
+  ])
+  
+
+
+  return  res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      channel[0],
+      'User profile fetched successfully',
+    )
+  )
+
 })
 
 export {
@@ -439,5 +517,6 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
-  updateUserCoverImage
+  updateUserCoverImage,
+  getUserChannelProfile
 }
