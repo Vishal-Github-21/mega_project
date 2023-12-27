@@ -5,6 +5,7 @@ import { User } from "../models/user.models.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponses.js"
 import jwt from "jsonwebtoken"
+import mongoose, { Mongoose } from "mongoose";
 
 // as we are going to genrate access and refresh token many a times so its better to write seprate method for it
 
@@ -493,20 +494,76 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
       }
     }
   ])
-  
 
 
-  return  res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      channel[0],
-      'User profile fetched successfully',
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channel[0],
+        'User profile fetched successfully',
+      )
     )
-  )
 
 })
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        // _id : req.user._id, this wont work cause inside aggregate pipelines mongoose doesnot convert userId i.e is a string to ObjectId of mongodb outside aggregate it does so we need to create new new ObjectId for it
+
+        _id: new mongoose.Types.ObjectId(req?.user._id)
+      }
+    },
+    {
+      $lookup: { //joining ids of videos in field of watchhistory with field of id in videos
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: { //getting values of owner using nested lookup
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [ //only projecting necessary fields 
+                {
+                  $project: {
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1
+                  }
+                },
+                {
+                  $addFields: { // sending value of owner for forntend in an orgnaized manner not whole array just values to make their life simple
+                    owner: {
+                      $arrayElemAt: ["$owner", "0"]
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ])
+
+  return res
+         .status(200)
+         .json(
+          new ApiResponse(200,
+              user[0].watchHistory,
+              "watach history fetched successfully !"
+            )
+         )
+})
+
 
 export {
   registerUser,
@@ -518,5 +575,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
-  getUserChannelProfile
+  getUserChannelProfile,
+  getWatchHistory
 }
